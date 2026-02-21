@@ -1,0 +1,151 @@
+import React from 'react';
+import { 
+  Activity, 
+  Zap, 
+  Layers, 
+  ChevronRight,
+  Wifi,
+  Radio,
+  Search,
+  Database,
+  Cpu
+} from 'lucide-react';
+
+export const Panel = ({ title, icon: Icon, children, color, glowColor }) => (
+  <div className={`bg-zinc-950 border border-zinc-900 rounded-xl flex flex-col h-full shadow-lg overflow-hidden group/panel`}>
+    <div className="px-5 py-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-900/20">
+      <div className="flex items-center gap-3">
+        <div className={`p-2 rounded-lg ${color} bg-opacity-20 relative`}>
+          <div className={`absolute inset-0 rounded-lg ${glowColor} opacity-0 group-hover/panel:opacity-40 blur-md transition-opacity duration-500`} />
+          <Icon className={`${color.replace('bg-', 'text-').replace('-600', '-400').replace('-500', '-400')} relative z-10`} size={18} />
+        </div>
+        <h3 className="font-bold text-white tracking-tight group-hover/panel:text-blue-400 transition-colors duration-300">{title}</h3>
+      </div>
+    </div>
+    <div className="flex-grow overflow-auto p-4 custom-scrollbar bg-black/20">
+      {children}
+    </div>
+  </div>
+);
+
+export const LogItem = ({ data }) => (
+  <div className="mb-2 p-3 font-mono text-[11px] bg-black/40 rounded border border-zinc-800/50 hover:border-zinc-700 hover:bg-zinc-900/40 transition-all duration-200 group/item">
+    <div className="flex justify-between mb-1">
+      <span className="text-blue-400/80">[{data?.timestamp}]</span>
+      <span className="text-zinc-600 flex items-center gap-1 uppercase">{data?.eventid}</span>
+    </div>
+    <div className="text-zinc-400">{data?.message || data?.input}</div>
+    {data?.src_ip && (
+      <div className="text-zinc-500 mt-2 flex items-center gap-2">
+        <span className="px-1.5 py-0.5 bg-zinc-900 rounded text-[9px] uppercase font-bold">IP</span>
+        <span>{data?.src_ip}</span>
+      </div>
+    )}
+  </div>
+);
+
+export const RiskItem = ({ data, active, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={`mb-3 p-3 rounded-lg flex flex-col gap-3 border cursor-pointer transition-all duration-300 group
+      ${active ? 'bg-zinc-800/40 border-zinc-600' : 'bg-zinc-900/20 border-zinc-900 hover:bg-zinc-800/20'}`}
+  >
+    <div className="flex items-center gap-4">
+      <div className="relative w-10 h-10 flex-shrink-0">
+        <div className={`absolute inset-0 rounded-full border-2 border-zinc-800`} />
+        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white">
+          {data?.score || 50}
+        </div>
+      </div>
+      <div className="flex-grow min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] font-black uppercase" style={{ color: data?.colour || '#f59e0b' }}>
+            {data?.severity || 'MEDIUM'}
+          </span>
+          <span className="text-[9px] text-zinc-600 truncate">{data?.timestamp}</span>
+        </div>
+        <h4 className="text-xs font-bold text-white truncate uppercase">{data?.eventid || 'THREAT-ANALYSIS'}</h4>
+      </div>
+    </div>
+    {data?.summary && (
+      <div className="text-[10px] text-zinc-400 leading-relaxed border-l-2 border-zinc-800 pl-3 py-1 italic bg-black/20 rounded-r">
+        {data.summary}
+      </div>
+    )}
+  </div>
+);
+
+export const AttackChainItem = ({ data }) => (
+  <div className="mb-4 bg-zinc-950/40 border border-zinc-900 rounded-xl overflow-hidden group/chain hover:border-zinc-700 transition-all duration-300">
+    <div className="p-3 border-b border-zinc-900 flex justify-between items-center bg-zinc-900/20">
+      <h4 className="text-[10px] font-black text-white uppercase">{data?.chain_id || 'ATTACK-CHAIN'}</h4>
+      <span className="text-[9px] text-zinc-600 uppercase">{data?.detected_at}</span>
+    </div>
+    <div className="p-3">
+       <div className="text-[11px] text-blue-400 mb-1 font-bold uppercase">{data?.technique}</div>
+       <div className="text-[10px] text-zinc-500 mb-4">{data?.attacker_ip}</div>
+       
+       {data?.stages && (
+         <div className="space-y-4 relative before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-[1px] before:bg-zinc-800">
+           {data.stages.map((stage, idx) => (
+             <div key={idx} className="relative pl-6">
+               <div className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full bg-zinc-900 border border-zinc-700 group-hover/chain:bg-blue-600 group-hover/chain:border-blue-400 transition-colors duration-500" />
+               <div className="text-[10px] font-black text-zinc-300 uppercase mb-1 tracking-wider">{stage.name}</div>
+               <div className="text-[9px] text-zinc-500 leading-relaxed font-medium capitalize">{stage.desc}</div>
+             </div>
+           ))}
+         </div>
+       )}
+    </div>
+  </div>
+);
+
+export const MitreItem = ({ data }) => (
+  <div className="mb-3 p-3 bg-zinc-900/10 border border-zinc-900 rounded-lg hover:border-zinc-700 transition-colors">
+    <div className="flex justify-between items-start mb-2">
+      <span className="text-[9px] font-black text-blue-500 uppercase tracking-tighter bg-blue-500/10 px-1.5 py-0.5 rounded">
+        {data.technique_id}
+      </span>
+      <span className="text-[10px] font-bold text-white uppercase text-right leading-none">
+        {data.technique_name}
+      </span>
+    </div>
+    <div className="text-[9px] text-zinc-600 font-bold uppercase mb-1">Tactic: {data.tactic_name}</div>
+    {data.evidence && (
+      <div className="mt-2 space-y-1">
+        {data.evidence.map((ev, i) => (
+          <div key={i} className="text-[9px] text-zinc-500 italic bg-black/20 p-1 rounded">
+            • {ev}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+export const MitigationItem = ({ data }) => (
+  <div className="mb-2 p-3 bg-emerald-900/5 border border-emerald-900/20 rounded-lg hover:bg-emerald-900/10 transition-colors">
+    <div className="flex items-center gap-2 mb-1">
+      <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+      <span className="text-[10px] font-black text-emerald-400 uppercase">{data.mitigation_name}</span>
+    </div>
+    <p className="text-[10px] text-zinc-400 leading-relaxed">{data.description}</p>
+  </div>
+);
+
+export const AgentPRItem = ({ data }) => (
+  <div className="mb-3 p-3 bg-zinc-900/20 border border-zinc-800 rounded-lg flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="w-8 h-8 rounded bg-blue-600/20 flex items-center justify-center">
+        <Cpu className="text-blue-400" size={14} />
+      </div>
+      <div>
+        <div className="text-[10px] font-bold text-white">#{data.id} {data.title}</div>
+        <div className="text-[9px] text-zinc-500">{data.repo} • {data.status}</div>
+      </div>
+    </div>
+    <div className="px-2 py-1 bg-zinc-800 rounded text-[9px] font-bold text-zinc-400 uppercase">
+      {data.label}
+    </div>
+  </div>
+);
