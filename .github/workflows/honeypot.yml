@@ -34,13 +34,8 @@ jobs:
           git apply patch.diff || exit 1
           git add .
           git commit -m "Auto security fix for honeypot issue #${{ github.event.issue.number }}"
-
-      - name: Push branch
-        uses: ad-m/github-push-action@v0.6
-        with:
-          branch: auto/security-fix-${{ github.run_id }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
+          git push
+          
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
