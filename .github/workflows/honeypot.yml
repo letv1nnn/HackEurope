@@ -49,6 +49,10 @@ jobs:
             git apply patch.diff
           else
             echo "Patch cannot be applied cleanly. Aborting."
+            echo "--- Patch content ---"
+            cat patch.diff
+            echo "--- Git apply error ---"
+            git apply --check patch.diff 2>&1 || true
             exit 1
           fi
 
