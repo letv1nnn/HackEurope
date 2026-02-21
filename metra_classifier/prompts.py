@@ -11,7 +11,7 @@ SYSTEM_PROMPT = (
 
 # Optional schema locking (HIGHLY recommended)
 OUTPUT_SCHEMA = """
-Return JSON using EXACT structure:
+Return JSON using EXACT structure(deeply explain each statement in the output schema):
 
 {
   "event_type": "attack_session",
