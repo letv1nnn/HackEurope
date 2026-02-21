@@ -212,3 +212,7 @@ __marimo__/
 # GitHub App credentials
 gha-creds-*.json
 
+# Docker-managed log directories (permission issues)
+wazuh-logs/
+cowrie-log/
+
