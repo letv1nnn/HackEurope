@@ -18,7 +18,8 @@ jobs:
         uses: google-github-actions/run-gemini-cli@v0.1.3
         with:
           prompt: "Issue body: ${{ github.event.issue.body }}. Generate a patch. Output only a unified diff."
-      
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - name: Save patch
         run: echo "${{ steps.gemini.outputs.summary }}" > patch.diff
         
