@@ -2,84 +2,21 @@ import asyncio
 import json
 from typing import Optional, Any
 from google import genai
-from dotenv import load_dotenv
-import os
-import logging
 import re
 
+from prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA
+from env_setup import *
+
 # -------------------------
-# Environment & Logging
+# Gemini client setup
 # -------------------------
-
-load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-logging.basicConfig(
-    filename="classification.log",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-
-logger = logging.getLogger(__name__)
-
 if not GEMINI_API_KEY:
     raise ValueError("Missing GEMINI_API_KEY in environment variables.")
-
-# -------------------------
-# Gemini Client
-# -------------------------
-
 client = genai.Client(api_key=GEMINI_API_KEY)
-
-# -------------------------
-# Prompts
-# -------------------------
-
-SYSTEM_PROMPT = (
-    "You are a MITRE ATT&CK classifier.\n"
-    "Your task is to analyze security logs and map attacker behavior "
-    "to MITRE ATT&CK tactics and techniques.\n\n"
-    "CRITICAL OUTPUT RULES:\n"
-    "- Return STRICT JSON ONLY\n"
-    "- DO NOT use markdown\n"
-    "- DO NOT wrap output in ```json\n"
-    "- DO NOT include explanations outside JSON\n"
-)
-
-# Optional schema locking (HIGHLY recommended)
-OUTPUT_SCHEMA = """
-Return JSON using EXACT structure:
-
-{
-  "event_type": "attack_session",
-  "analysis": {
-    "summary": string,
-    "confidence": "low | medium | high",
-    "severity": "low | medium | high | critical"
-  },
-  "mitre_attack": [
-    {
-      "tactic_id": string,
-      "tactic_name": string,
-      "technique_id": string,
-      "technique_name": string,
-      "evidence": [string]
-    }
-  ],
-  "mitigations": [
-    {
-      "mitigation_id": string,
-      "mitigation_name": string,
-      "description": string
-    }
-  ]
-}
-"""
 
 # -------------------------
 # Utilities
 # -------------------------
-
 async def read_from_json(path: str) -> Optional[Any]:
     logger.info(f"Reading {path}")
     try:
@@ -90,12 +27,8 @@ async def read_from_json(path: str) -> Optional[Any]:
         return None
 
 
+# optional normalization step for logs - can add ECS / OSSEM rules here later
 async def logs_normalization(logs: Any) -> Any:
-    """
-    Placeholder normalization logic.
-    Add ECS / OSSEM rules here later.
-    """
-
     if isinstance(logs, list):
         for event in logs:
             if "timestamp" in event:
@@ -105,10 +38,6 @@ async def logs_normalization(logs: Any) -> Any:
 
 
 def clean_llm_json(text: str) -> str:
-    """
-    Deterministically removes markdown wrappers.
-    """
-
     text = text.strip()
 
     # Remove ```json or ``` wrappers
@@ -200,7 +129,7 @@ async def run_classification_workflow(
 # Entry Point
 # -------------------------
 
-async def main():
+async def runner():
     logger.info("MITRE ATT&CK classification program started")
 
     await run_classification_workflow(
@@ -212,4 +141,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(runner())
