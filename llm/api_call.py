@@ -4,7 +4,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
 
-def get_llm_response(prompt: str, model: str = "gemini-1.5-flash") -> str:
+def get_llm_response(prompt: str, model: str = "gemini-2.5-flash-lite") -> str:
     """
     Invokes the Gemini LLM with the given prompt and returns the text response.
     """
