@@ -222,3 +222,4 @@ gha-creds-*.json
 wazuh-logs/
 cowrie-log/
 
+cowrie/
