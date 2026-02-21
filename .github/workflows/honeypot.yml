@@ -17,12 +17,27 @@ jobs:
         id: gemini
         uses: google-github-actions/run-gemini-cli@v0.1.3
         with:
-          prompt: "Issue body: ${{ github.event.issue.body }}. Generate a patch. Output only a unified diff."
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          prompt: |
+            Issue body: ${{ github.event.issue.body }}. 
+            Generate a patch as a **unified diff only**. 
+            Do not include **any** extra text.
+
+            example valid patch creating a test.txt file: 
+            --- /dev/null
+            +++ b/test.txt
+            @@ -0,0 +1,3 @@
+            +This is a test file.
+            +It was created by an automated patch.
+            +Hello World!
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          settings: |
+            {
+              "coreTools": ["read_file", "write_file", "list_directory", "run_shell_command"]
+            }
+
       - name: Save patch
         run: echo "${{ steps.gemini.outputs.summary }}" > patch.diff
-        
+
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
@@ -32,11 +47,23 @@ jobs:
         run: |
           BRANCH_NAME="auto/security-fix-${{ github.run_id }}"
           git checkout -b $BRANCH_NAME
-          git apply patch.diff || exit 1
+
+          # Check if patch can be applied cleanly
+          if git apply --check patch.diff; then
+            git apply patch.diff
+          else
+            echo "Patch cannot be applied cleanly. Aborting."
+            echo "--- Patch content ---"
+            cat patch.diff
+            echo "--- Git apply error ---"
+            git apply --check patch.diff 2>&1 || true
+            exit 1
+          fi
+
           git add .
           git commit -m "Auto security fix for honeypot issue #${{ github.event.issue.number }}"
           git push
-          
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
