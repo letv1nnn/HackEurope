@@ -40,7 +40,7 @@ async def logs_normalization(logs: Any) -> Any:
 def clean_llm_json(text: str) -> str:
     text = text.strip()
 
-    # Remove ```json or ``` wrappers
+    # Remove json or  wrappers
     text = re.sub(r"^```json\s*", "", text)
     text = re.sub(r"^```\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
