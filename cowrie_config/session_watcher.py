@@ -3,7 +3,7 @@ import time
 import requests
 from collections import defaultdict
 
-LOG_FILE = "/home/cowrie/cowrie/var/log/cowrie/cowrie.json"
+LOG_FILE = "/home/letv1n/comsci/Projects/HackEurope/cowrie_config/cowrie/var/log/cowrie/cowrie.json"
 API_URL = "http://localhost:8000/api/v1/dashboard/send_honeypot_json"
 
 # store logs grouped by session

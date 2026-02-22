@@ -1,27 +1,41 @@
+"""
+Dashboard API endpoints for real-time threat intelligence streaming.
+Aggregates logs, classifications, and remediation updates.
+"""
+
 import logging
 import json
 import asyncio
 from datetime import datetime, timezone
-from typing import AsyncGenerator, Union
+from typing import AsyncGenerator, Union, List, Dict, Any
 from fastapi import APIRouter, Request, Body
 from fastapi.responses import StreamingResponse
-from backend.api.bus import dashboard_bus
 
-from backend.agents.mitre_classifier.main import classify_logs, correlate_logs, generate_agent_pr
+from backend.api.bus import dashboard_bus
+from backend.constants import SSE_MEDIA_TYPE, generate_agent_pr
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
+
 def _now() -> str:
+    """Get current UTC timestamp in HH:MM:SS format."""
     return datetime.now(tz=timezone.utc).strftime("%H:%M:%S")
+
 
 # ── Endpoint: Push Data ────────────────────────────────────────────────────────
 
 @router.post("/send_honeypot_json")
-async def send_honeypot_json(data: Union[dict, list] = Body(...)):
+async def send_honeypot_json(data: Union[Dict[str, Any], List[Dict[str, Any]]] = Body(...)) -> Dict[str, Any]:
     """
-    Receives JSON or List of JSON and pushes items to all dashboard clients.
-    Also triggers MITRE classification in the background.
+    Receive and broadcast honeypot logs to all connected dashboard clients.
+    Triggers background MITRE classification.
+    
+    Args:
+        data: Single log entry or list of log entries
+    
+    Returns:
+        Status information about the broadcast
     """
     subs = len(dashboard_bus.subscribers)
     
@@ -37,9 +51,14 @@ async def send_honeypot_json(data: Union[dict, list] = Body(...)):
         count += 1
 
     # 2. Background Classification
-    async def run_and_emit_classification(log_data):
+    async def run_and_emit_classification(log_data: List[Dict[str, Any]]) -> None:
+        """Run classification and emit results to dashboard."""
         logger.info(f"Background classification task started for {len(log_data)} logs.")
         try:
+            # Import here to avoid circular imports
+            from backend.agents.mitre_classifier.main import classify_logs, correlate_logs
+            from scripts.agent import create_github_issue
+            
             # results is now a List[dict]
             results = await classify_logs(log_data)
             if results:
@@ -47,6 +66,8 @@ async def send_honeypot_json(data: Union[dict, list] = Body(...)):
                     res["timestamp"] = _now()
                     await dashboard_bus.emit(res)
                 logger.info(f"Emitted {len(results)} individual classifications.")
+                results_with_context = " In the following data, the MITRE classifier identified the following techniques and provided fix suggestions for each log entry: " + json.dumps(results, indent=2) + " Please review the repository and suggest changes that would make it harder for the types of threats mentioned to be executed in the future - if they are indeed real - based on the classification results and suggested fixes for each log entry."
+                create_github_issue("MITRE Classification Results", f"{results_with_context}")
             else:
                 logger.warning("Classification results was empty or None.")
 
@@ -101,18 +122,24 @@ async def send_honeypot_json(data: Union[dict, list] = Body(...)):
 
     return {"status": "broadcasted", "items": count, "subscribers": subs}
 
+
 # ── Endpoint: Consolidated Stream ──────────────────────────────────────────────
 
 @router.get("/stream")
-async def stream_dashboard_events(request: Request):
+async def stream_dashboard_events(request: Request) -> StreamingResponse:
     """
-    A single SSE stream that pushes all dashboard-related notifications.
+    SSE stream for all dashboard-related events.
+    Aggregates logs, classifications, and remediation updates.
+    
+    Returns:
+        StreamingResponse: Server-Sent Events stream with all dashboard updates
     """
     queue = await dashboard_bus.subscribe()
     client_ip = request.client.host if request.client else "unknown"
     logger.info(f"New dashboard subscriber connected from {client_ip}. Total: {len(dashboard_bus.subscribers)}")
 
-    async def event_generator():
+    async def event_generator() -> AsyncGenerator[str, None]:
+        """Generate dashboard events for connected client."""
         try:
             while True:
                 if await request.is_disconnected():
@@ -131,7 +158,9 @@ async def stream_dashboard_events(request: Request):
             dashboard_bus.unsubscribe(queue)
             logger.info(f"Unsubscribed client {client_ip}. Remaining: {len(dashboard_bus.subscribers)}")
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type=SSE_MEDIA_TYPE,
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    )
 
-# We'll need to start this simulator somewhere, or keep it in dashboard.py 
-# for convenience. main.py is better for lifecycle management.

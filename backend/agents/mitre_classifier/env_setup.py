@@ -1,20 +1,30 @@
+"""
+Environment setup for MITRE classifier.
+Loads configuration and sets up logging.
+"""
+
+import sys
 from pathlib import Path
-from dotenv import load_dotenv
-import os
-import logging
 
-# Robust path resolution for .env
-project_root = Path(__file__).resolve().parents[3]  # HackEurope root
-dotenv_path = project_root / ".env"
-load_dotenv(dotenv_path=dotenv_path)
+# Add backend to path for imports
+project_root = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(project_root))
 
-# Support both GEMINI_API_KEY and GOOGLE_API_KEY
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+from backend.config import settings
+from backend.logger import setup_logging
 
-logging.basicConfig(
-    filename="classification.log",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+# Setup logging
+logger = setup_logging(
+    name="mitre_classifier",
+    level=settings.LOG_LEVEL,
+    log_file=settings.LOG_FILE or "classification.log"
 )
 
-logger = logging.getLogger(__name__)
+# Get API key
+GEMINI_API_KEY = settings.GEMINI_API_KEY
+
+if not GEMINI_API_KEY:
+    logger.error("MITRE Classifier: MISSING API KEY. Gemini will NOT work.")
+else:
+    logger.info(f"MITRE Classifier: Gemini API key configured")
+

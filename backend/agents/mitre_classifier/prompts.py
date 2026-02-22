@@ -8,6 +8,7 @@ SYSTEM_PROMPT = (
     "- DO NOT wrap output in ```json\n"
     "- DO NOT include explanations outside JSON\n"
     "- You MUST provide a separate analysis for EVERY log entry provided.\n"
+    "- In JSON you must include a really good fix suggestion for the copilot"
 )
 
 # Individual risk score schema
