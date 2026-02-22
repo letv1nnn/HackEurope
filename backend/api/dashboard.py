@@ -42,6 +42,7 @@ async def send_honeypot_json(data: Union[dict, list] = Body(...)):
         try:
             # results is now a List[dict]
             results = await classify_logs(log_data)
+            print(f"Classification results: {results}")
             if results:
                 for res in results:
                     res["timestamp"] = _now()

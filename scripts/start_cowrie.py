@@ -1,7 +1,14 @@
 import subprocess as sp
+import os
 
-cowrie_pr = sp.run(["cowrie", "start"], check=True)
-streamer_pr = sp.run(["python3", "cowrie/session_watcher.py"], check=True)
+def run_process(command):
+    result = sp.run(command, check=True)
+    if result.returncode != 0:
+        print(f"Command {' '.join(command)} failed with return code {result.returncode}")
+    return result
 
-if cowrie_pr.returncode != 0 or streamer_pr != 0:
-    print("Scripts failed to run")
+os.chdir("./cowrie_config/cowrie/cowrie-env/")
+print(os.getcwd())
+cowrie_start = run_process(["bin/cowrie", "start"])
+os.chdir("../../")
+streamer_pr = run_process(["python3", "cowrie/session_watcher.py"])

@@ -1,0 +1,6 @@
+#!/home/letv1n/comsci/Projects/HackEurope/cowrie_config/cowrie-env/bin/python3
+import sys
+from cowrie.scripts.fsctl import run
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(run())
