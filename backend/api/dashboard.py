@@ -12,7 +12,7 @@ from fastapi import APIRouter, Request, Body
 from fastapi.responses import StreamingResponse
 
 from backend.api.bus import dashboard_bus
-from backend.constants import SSE_MEDIA_TYPE, generate_agent_pr
+from backend.constants import SSE_MEDIA_TYPE
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -55,19 +55,29 @@ async def send_honeypot_json(data: Union[Dict[str, Any], List[Dict[str, Any]]] =
         """Run classification and emit results to dashboard."""
         logger.info(f"Background classification task started for {len(log_data)} logs.")
         try:
-            # Import here to avoid circular imports
-            from backend.agents.mitre_classifier.main import classify_logs, correlate_logs
-            from scripts.agent import create_github_issue
-            
-            # results is now a List[dict]
+            # Import here to avoid circular imports and to allow optional components
+            from backend.agents.mitre_classifier.main import classify_logs, correlate_logs, generate_agent_ticket, submit_agent_ticket
+            try:
+                from scripts.agent import create_github_issue
+            except Exception:
+                create_github_issue = None
+
+            # 1. Classification
             results = await classify_logs(log_data)
             if results:
                 for res in results:
                     res["timestamp"] = _now()
                     await dashboard_bus.emit(res)
                 logger.info(f"Emitted {len(results)} individual classifications.")
-                results_with_context = " In the following data, the MITRE classifier identified the following techniques and provided fix suggestions for each log entry: " + json.dumps(results, indent=2) + " Please review the repository and suggest changes that would make it harder for the types of threats mentioned to be executed in the future - if they are indeed real - based on the classification results and suggested fixes for each log entry."
-                create_github_issue("MITRE Classification Results", f"{results_with_context}")
+                if create_github_issue:
+                    try:
+                        results_with_context = (
+                            "In the following data, the MITRE classifier identified the following techniques and provided fix suggestions for each log entry:\n"
+                            + json.dumps(results, indent=2)
+                        )
+                        create_github_issue("MITRE Classification Results", results_with_context)
+                    except Exception:
+                        logger.exception("Failed to create github issue from classification results.")
             else:
                 logger.warning("Classification results was empty or None.")
 
@@ -81,25 +91,37 @@ async def send_honeypot_json(data: Union[Dict[str, Any], List[Dict[str, Any]]] =
                 await dashboard_bus.emit(correlation)
                 logger.info("Attack correlation emitted to dashboard bus.")
 
-            # 3. Finalize & Trigger Agent PR
-            # Find the most severe result to generate a PR for
+            # 3. Generate an agent ticket for highest-severity result (best-effort)
             high_risk_results = [r for r in (results or []) if str(r.get("severity", "")).upper() in ["CRITICAL", "HIGH"]]
             if high_risk_results:
-                # Use the first high risk result to generate a PR
                 target_result = high_risk_results[0]
-                pr_event = await generate_agent_pr(target_result)
-                if pr_event:
-                    pr_event["id"] = 100 + len(log_data)
-                    pr_event["timestamp"] = _now()
-                    if logs and isinstance(logs, list) and len(logs) > 0:
-                        pr_event["src_ip"] = logs[0].get("src_ip")
-                    
-                    await dashboard_bus.emit(pr_event)
-                    logger.info(f"AI-generated Agent PR emitted: {pr_event.get('title')}")
-                else:
-                    logger.warning("Failed to generate AI Agent PR.")
+                try:
+                    ticket = await generate_agent_ticket(target_result)
+                    if ticket:
+                        # Enrich ticket with metadata
+                        ticket["id"] = 100 + len(log_data)
+                        ticket["timestamp"] = _now()
+                        if log_data and isinstance(log_data, list) and len(log_data) > 0:
+                            ticket["src_ip"] = log_data[0].get("src_ip")
 
-            # Signal completion
+                        # Try to submit via helper; if not available or fails, emit directly
+                        submitted = False
+                        try:
+                            submitted = await submit_agent_ticket(ticket)
+                        except Exception:
+                            logger.debug("submit_agent_ticket not available or failed.")
+
+                        if not submitted:
+                            await dashboard_bus.emit(ticket)
+                            logger.info("AI-generated Agent ticket emitted to dashboard bus (fallback).")
+                        else:
+                            logger.info("AI-generated Agent ticket submitted to dashboard endpoint.")
+                    else:
+                        logger.warning("Failed to generate AI Agent ticket.")
+                except Exception as e:
+                    logger.error(f"Failed to generate/submit agent ticket: {e}")
+
+            # 4. Signal completion
             await dashboard_bus.emit({
                 "type": "pipeline_finished",
                 "timestamp": _now(),
@@ -121,6 +143,20 @@ async def send_honeypot_json(data: Union[Dict[str, Any], List[Dict[str, Any]]] =
     asyncio.create_task(run_and_emit_classification(data))
 
     return {"status": "broadcasted", "items": count, "subscribers": subs}
+
+
+@router.post("/tickets")
+async def receive_agent_ticket(ticket: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """Receive an agent ticket (from classifier or other services) and broadcast it to dashboard clients."""
+    try:
+        if isinstance(ticket, dict) and "timestamp" not in ticket:
+            ticket["timestamp"] = _now()
+        await dashboard_bus.emit(ticket)
+        logger.info("Received and emitted agent ticket to dashboard bus.")
+        return {"status": "ok", "ticket_emitted": True}
+    except Exception as e:
+        logger.error(f"Failed to receive/emit agent ticket: {e}")
+        return {"status": "error", "error": str(e)}
 
 
 # ── Endpoint: Consolidated Stream ──────────────────────────────────────────────

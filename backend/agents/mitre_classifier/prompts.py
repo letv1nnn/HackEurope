@@ -76,20 +76,24 @@ Return JSON structure:
 }
 """
 
-PR_GENERATION_PROMPT = (
+TICKET_GENERATION_PROMPT = (
     "You are a Senior Security Engineer and AI Fixer Agent.\n"
-    "Your task is to generate a realistic Pull Request summary based on a detected threat and its MITRE mitigations.\n"
-    "Create a professional title and a concise description of the fix.\n"
+    "Your task is to generate a realistic agent ticket that contains a concrete code or configuration fix based on a detected threat and its MITRE mitigations.\n"
+    "The ticket must include the affected files, a suggested patch (unified diff or patch text), and clear patch instructions for an automated GitHub agent.\n"
 )
 
-PR_GENERATION_SCHEMA = """
+TICKET_GENERATION_SCHEMA = """
 Return STRICT JSON structure:
 {
-  "type": "agent_pr",
-  "title": "string (e.g. [PATCH] Block suspicious SSH brute forcing)",
-  "body": "string (Short description of the changes)",
-  "repo": "string (e.g. HackEurope or Cowrie-Configs)",
+  "type": "agent_ticket",
+  "title": "string (short descriptive title)",
+  "description": "string (concise description of the problem and fix)",
+  "repo": "string (target repository name)",
+  "branch": "string (suggested branch name, e.g. fix/mitigation-123)",
   "label": "FIX | SECURITY | AUTO-PATCH",
-  "priority": "HIGH | MEDIUM | LOW"
+  "priority": "HIGH | MEDIUM | LOW",
+  "affected_files": ["string (file paths to modify)"],
+  "suggested_patch": "string (unified diff or patch content)",
+  "patch_instructions": "string (clear step-by-step instructions for applying the patch)"
 }
 """

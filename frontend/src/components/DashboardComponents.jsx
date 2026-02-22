@@ -8,7 +8,9 @@ import {
   Radio,
   Search,
   Database,
-  Cpu
+  Cpu,
+  ShieldCheck,
+  Layers as LayersIcon
 } from 'lucide-react';
 
 export const Panel = ({ title, icon: Icon, children, color, glowColor }) => (
@@ -103,18 +105,23 @@ export const AttackChainItem = ({ data }) => (
 export const MitreItem = ({ data }) => (
   <div className="mb-3 p-3 bg-zinc-900/10 border border-zinc-900 rounded-lg hover:border-zinc-700 transition-colors">
     <div className="flex justify-between items-start mb-2">
-      <span className="text-[9px] font-black text-blue-500 uppercase tracking-tighter bg-blue-500/10 px-1.5 py-0.5 rounded">
-        {data.technique_id}
-      </span>
+      <div className="flex items-center gap-2">
+        <div className="p-1 rounded bg-blue-700/10 text-blue-400">
+          <LayersIcon size={14} />
+        </div>
+        <span className="text-[9px] font-black text-blue-300 uppercase tracking-tighter bg-blue-500/5 px-1.5 py-0.5 rounded">
+          {data.technique_id}
+        </span>
+      </div>
       <span className="text-[10px] font-bold text-white uppercase text-right leading-none">
         {data.technique_name}
       </span>
     </div>
-    <div className="text-[9px] text-zinc-600 font-bold uppercase mb-1">Tactic: {data.tactic_name}</div>
+    <div className="text-[9px] text-zinc-400 font-bold uppercase mb-1">Tactic: {data.tactic_name}</div>
     {data.evidence && (
       <div className="mt-2 space-y-1">
         {data.evidence.map((ev, i) => (
-          <div key={i} className="text-[9px] text-zinc-500 italic bg-black/20 p-1 rounded">
+          <div key={i} className="text-[9px] text-zinc-300 italic bg-black/20 p-1 rounded">
             • {ev}
           </div>
         ))}
@@ -125,27 +132,29 @@ export const MitreItem = ({ data }) => (
 
 export const MitigationItem = ({ data }) => (
   <div className="mb-2 p-3 bg-emerald-900/5 border border-emerald-900/20 rounded-lg hover:bg-emerald-900/10 transition-colors">
-    <div className="flex items-center gap-2 mb-1">
-      <div className="w-1 h-3 bg-emerald-500 rounded-full" />
-      <span className="text-[10px] font-black text-emerald-400 uppercase">{data.mitigation_name}</span>
+    <div className="flex items-center gap-3 mb-1">
+      <div className="p-1 rounded bg-emerald-700/10 text-emerald-400">
+        <ShieldCheck size={14} />
+      </div>
+      <span className="text-[10px] font-black text-emerald-300 uppercase">{data.mitigation_name}</span>
     </div>
-    <p className="text-[10px] text-zinc-400 leading-relaxed">{data.description}</p>
+    <p className="text-[10px] text-zinc-300 leading-relaxed">{data.description}</p>
   </div>
 );
 
-export const AgentPRItem = ({ data }) => (
+export const AgentTicketItem = ({ data }) => (
   <div className="mb-3 p-3 bg-zinc-900/20 border border-zinc-800 rounded-lg flex items-center justify-between">
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded bg-blue-600/20 flex items-center justify-center">
-        <Cpu className="text-blue-400" size={14} />
+      <div className="w-8 h-8 rounded bg-indigo-700/10 flex items-center justify-center">
+        <Cpu className="text-indigo-400" size={14} />
       </div>
       <div>
-        <div className="text-[10px] font-bold text-white">#{data.id} {data.title}</div>
-        <div className="text-[9px] text-zinc-500">{data.repo} • {data.status}</div>
+        <div className="text-[10px] font-bold text-white">{data.title}</div>
+        <div className="text-[9px] text-zinc-500">{data.repo} • {data.branch || 'suggested branch'}</div>
       </div>
     </div>
     <div className="px-2 py-1 bg-zinc-800 rounded text-[9px] font-bold text-zinc-400 uppercase">
-      {data.label}
+      {data.label || data.priority}
     </div>
   </div>
 );

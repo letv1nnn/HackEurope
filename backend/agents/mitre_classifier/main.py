@@ -3,6 +3,7 @@ import json
 import os
 import re
 import logging
+import httpx
 from typing import Optional, Any, List
 
 from google import genai
@@ -10,11 +11,11 @@ from google import genai
 # Relative imports for the new structure
 try:
     from env_setup import GEMINI_API_KEY, logger
-    from prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA, CORRELATION_PROMPT, CORRELATION_SCHEMA, PR_GENERATION_PROMPT, PR_GENERATION_SCHEMA
+    from prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA, CORRELATION_PROMPT, CORRELATION_SCHEMA, TICKET_GENERATION_PROMPT, TICKET_GENERATION_SCHEMA
 except ImportError:
     # Fallback for different execution contexts
     from .env_setup import GEMINI_API_KEY, logger
-    from .prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA, CORRELATION_PROMPT, CORRELATION_SCHEMA, PR_GENERATION_PROMPT, PR_GENERATION_SCHEMA
+    from .prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA, CORRELATION_PROMPT, CORRELATION_SCHEMA, TICKET_GENERATION_PROMPT, TICKET_GENERATION_SCHEMA
 
 # -------------------------
 # Gemini client setup
@@ -249,14 +250,14 @@ async def correlate_logs(logs: List[dict]) -> Optional[dict]:
     normalized = await logs_normalization(logs)
     return await correlate_with_gemini(normalized)
 
-async def generate_agent_pr(risk_result: dict) -> Optional[dict]:
+async def generate_agent_ticket(risk_result: dict) -> Optional[dict]:
     """
-    Generate a realistic Agent PR based on a classification result.
+    Generate an agent ticket (code/config fix) based on a classification result.
     """
     if not client:
         return None
 
-    logger.info("Metra Classifier: Generating Agent PR")
+    logger.info("Metra Classifier: Generating Agent Ticket")
     try:
         context = {
             "severity": risk_result.get("severity"),
@@ -264,13 +265,13 @@ async def generate_agent_pr(risk_result: dict) -> Optional[dict]:
             "mitigations": risk_result.get("mitigations", []),
             "mitre": risk_result.get("mitre_attack", [])
         }
-        
+
         prompt = (
-            PR_GENERATION_PROMPT +
-            "\n" + PR_GENERATION_SCHEMA +
+            TICKET_GENERATION_PROMPT +
+            "\n" + TICKET_GENERATION_SCHEMA +
             f"\nCONTEXT:\n{json.dumps(context)}"
         )
-        
+
         response = client.models.generate_content(
             model="gemini-2.5-flash-lite",
             contents=prompt
@@ -282,15 +283,29 @@ async def generate_agent_pr(risk_result: dict) -> Optional[dict]:
         raw_output = response.text
         cleaned_output = clean_llm_json(raw_output)
         parsed_json = json.loads(cleaned_output)
-        
+
         # Ensure type is set
-        parsed_json["type"] = "agent_pr"
-        
+        parsed_json["type"] = "agent_ticket"
+
         return parsed_json
 
     except Exception as e:
-        logger.error(f"Metra Classifier: Exception during PR generation: {e}")
+        logger.error(f"Metra Classifier: Exception during ticket generation: {e}")
         return None
+
+
+async def submit_agent_ticket(ticket: dict, endpoint: str = "http://localhost:8000/api/v1/dashboard/tickets") -> bool:
+    """Submit an agent ticket to the dashboard API endpoint. Returns True on success."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client_http:
+            resp = await client_http.post(endpoint, json=ticket)
+            if resp.status_code >= 200 and resp.status_code < 300:
+                return True
+            logger.warning(f"submit_agent_ticket failed: {resp.status_code} {resp.text}")
+            return False
+    except Exception as e:
+        logger.error(f"submit_agent_ticket exception: {e}")
+        return False
 
 # -------------------------
 # Workflow / CLI Runner

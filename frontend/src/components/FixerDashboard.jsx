@@ -8,7 +8,7 @@ import {
   Search,
   Database,
 } from 'lucide-react';
-import { Panel, MitreItem, MitigationItem, AgentPRItem } from './DashboardComponents';
+import { Panel, MitreItem, MitigationItem, AgentTicketItem } from './DashboardComponents';
 
 export default function FixerDashboard({ 
   nodes, 
@@ -16,7 +16,7 @@ export default function FixerDashboard({
   onNodesChange, 
   onEdgesChange, 
   latestRisk, 
-  agentPRs 
+  agentTickets 
 }) {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -70,13 +70,13 @@ export default function FixerDashboard({
           </div>
 
           <div className="h-1/3 min-h-[200px]">
-            <Panel title="Agent Pull Requests" icon={Zap} color="bg-indigo-600" glowColor="bg-indigo-500">
-              {agentPRs.length === 0 ? (
+            <Panel title="Agent Tickets" icon={Zap} color="bg-indigo-600" glowColor="bg-indigo-500">
+              {(!agentTickets || agentTickets.length === 0) ? (
                 <div className="flex flex-col items-center justify-center h-full text-zinc-500 uppercase font-black text-[10px]">
                   Standing By...
                 </div>
               ) : (
-                agentPRs.map((pr, i) => <AgentPRItem key={i} data={pr} />)
+                agentTickets.map((t, i) => <AgentTicketItem key={i} data={t} />)
               )}
             </Panel>
           </div>
