@@ -21,6 +21,13 @@
   gap: var(--spacing-sm);
 }
 
+.sidebar__logo-img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  display: block;
+}
+
 .sidebar__logo-icon {
   width: 32px;
   height: 32px;

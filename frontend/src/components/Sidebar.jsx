@@ -54,17 +54,10 @@ export default function Sidebar({ activeView, onViewChange }) {
   ];
 
   return (
-    <aside className="w-72 bg-zinc-950 border-r border-zinc-900 flex flex-col shadow-2xl z-10 flex-shrink-0 overflow-y-auto">
-      {/* Logo */}
-      <div className="p-8 flex-shrink-0">
-        <div className="flex items-center gap-3 group">
-          <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg group-hover:scale-110 transition-transform duration-300">
-            <Terminal className="text-white" size={20} />
-          </div>
-          <div>
-            <h1 className="text-lg font-black text-white tracking-tight">PenTest</h1>
-            <p className="text-xs text-zinc-500">Agent System</p>
-          </div>
+    <aside className="sidebar">
+      <div className="sidebar__header">
+        <div className="sidebar__logo">
+          <img src="/RedTrace-removebg-preview.png" alt="RedTrace" className="sidebar__logo-img" />
         </div>
       </div>
 

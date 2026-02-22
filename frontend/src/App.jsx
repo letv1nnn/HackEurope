@@ -1,4 +1,4 @@
-/**
+/*
  * Main App Component
  * Entry point with routing and layout
  */
@@ -12,6 +12,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Home from './components/Home';
 import ClassificationDashboard from './components/ClassificationDashboard';
 import HoneypotConfig from './components/HoneypotConfig';
+import FixerDashboard from './components/FixerDashboard';
 
 // Page imports
 import Dashboard from './pages/Dashboard';
@@ -32,7 +33,58 @@ const NavigationItem = ({ icon: Icon, label, active, onClick }) => (
 );
 
 export default function App() {
-  const [activeView, setActiveView] = useState('dashboard');
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [activeTab, setActiveTab] = useState('home');
+  const [status, setStatus] = useState('Connecting...');
+
+  // Lifted Dashboard State
+  const [liveLogs, setLiveLogs] = useState([]);
+  const [riskScores, setRiskScores] = useState([]);
+  const [attackChains, setAttackChains] = useState([]);
+  const [latestRisk, setLatestRisk] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [agentPRs, setAgentPRs] = useState([
+    { id: 42, title: "Mitigate brute-force IP 1.2.3.4", repo: "HackEurope", status: "PENDING_REVIEW", label: "FIXER" },
+    { id: 41, title: "Add rate-limiting to SSH", repo: "Cowrie-Configs", status: "MERGED", label: "AUTO-PATCH" }
+  ]);
+
+  useEffect(() => {
+    const source = new EventSource('http://localhost:8000/api/v1/dashboard/stream');
+    
+    source.onopen = () => setStatus('Connected');
+
+    source.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const type = data.type || (data.eventid ? 'live_log' : null);
+
+        if (type === 'live_log') {
+          setLiveLogs(prev => [data, ...prev].slice(0, 20));
+          setIsProcessing(true);
+        } else if (type === 'risk_score') {
+          setRiskScores(prev => [data, ...prev].slice(0, 15));
+          setLatestRisk(data);
+        } else if (type === 'attack_chain') {
+          setAttackChains(prev => [data, ...prev].slice(0, 5));
+        } else if (type === 'agent_pr') {
+          setAgentPRs(prev => [data, ...prev].slice(0, 5));
+        } else if (type === 'pipeline_finished') {
+          setIsProcessing(false);
+        }
+      } catch (err) {
+        console.error("Error parsing dashboard push:", err);
+      }
+    };
+
+    source.onerror = (err) => {
+      console.error("Dashboard stream error:", err);
+      setStatus('Error');
+      source.close();
+    };
+
+    return () => source.close();
+  }, []);
 
   const renderContent = () => {
     switch (activeView) {
@@ -52,6 +104,37 @@ export default function App() {
         return <ClassificationDashboard />;
       case 'honeypot':
         return <HoneypotConfig />;
+
+      case 'classification':
+        return (
+          <div className="w-full h-full flex flex-col">
+            <div className="px-8 py-6 border-b border-zinc-900 flex-shrink-0">
+               <h2 className="text-2xl font-bold text-white mb-1 tracking-tight">Classification Agent</h2>
+               <p className="text-zinc-400 text-sm">Real-time threat intelligence and automated rule matching</p>
+            </div>
+            <div className="flex-grow overflow-hidden">
+               <ClassificationDashboard 
+                 liveLogs={liveLogs}
+                 riskScores={riskScores}
+                 attackChains={attackChains}
+                 latestRisk={latestRisk}
+                 setLatestRisk={setLatestRisk}
+                 isProcessing={isProcessing}
+               />
+            </div>
+          </div>
+        );
+      case 'fixer':
+        return (
+          <FixerDashboard 
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            latestRisk={latestRisk}
+            agentPRs={agentPRs}
+          />
+        );
       default:
         return <Dashboard />;
     }

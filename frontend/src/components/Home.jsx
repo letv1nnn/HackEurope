@@ -22,7 +22,7 @@ export default function Home() {
             Secure by Design
           </div>
           <h1 className="text-6xl font-black text-white mb-6 tracking-tight">
-            Pen Test <span className="text-blue-600">Agent</span>
+             <span className="text-red-600">Red</span> Trace
           </h1>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
             A suite of agents for affordable security. Automate your vulnerability discovery and remediation with AI-powered workflows.

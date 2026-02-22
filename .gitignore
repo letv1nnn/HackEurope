@@ -209,9 +209,8 @@ __marimo__/
 # logs
 *.log
 
-# examples
+.examples
 ./data/honeypot_logs.json
-=======
 # gemini-cli settings
 .gemini/
 
