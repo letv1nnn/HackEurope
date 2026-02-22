@@ -32,8 +32,7 @@ const Sidebar = () => {
     <aside className="sidebar">
       <div className="sidebar__header">
         <div className="sidebar__logo">
-          <div className="sidebar__logo-icon">H</div>
-          <span>HackEurope</span>
+          <img src="/RedTrace-removebg-preview.png" alt="RedTrace" className="sidebar__logo-img" />
         </div>
       </div>
 

@@ -74,3 +74,21 @@ Return JSON structure:
   ]
 }
 """
+
+PR_GENERATION_PROMPT = (
+    "You are a Senior Security Engineer and AI Fixer Agent.\n"
+    "Your task is to generate a realistic Pull Request summary based on a detected threat and its MITRE mitigations.\n"
+    "Create a professional title and a concise description of the fix.\n"
+)
+
+PR_GENERATION_SCHEMA = """
+Return STRICT JSON structure:
+{
+  "type": "agent_pr",
+  "title": "string (e.g. [PATCH] Block suspicious SSH brute forcing)",
+  "body": "string (Short description of the changes)",
+  "repo": "string (e.g. HackEurope or Cowrie-Configs)",
+  "label": "FIX | SECURITY | AUTO-PATCH",
+  "priority": "HIGH | MEDIUM | LOW"
+}
+"""

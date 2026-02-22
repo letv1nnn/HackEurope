@@ -10,11 +10,11 @@ from google import genai
 # Relative imports for the new structure
 try:
     from env_setup import GEMINI_API_KEY, logger
-    from prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA, CORRELATION_PROMPT, CORRELATION_SCHEMA
+    from prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA, CORRELATION_PROMPT, CORRELATION_SCHEMA, PR_GENERATION_PROMPT, PR_GENERATION_SCHEMA
 except ImportError:
     # Fallback for different execution contexts
     from .env_setup import GEMINI_API_KEY, logger
-    from .prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA, CORRELATION_PROMPT, CORRELATION_SCHEMA
+    from .prompts import SYSTEM_PROMPT, OUTPUT_SCHEMA, CORRELATION_PROMPT, CORRELATION_SCHEMA, PR_GENERATION_PROMPT, PR_GENERATION_SCHEMA
 
 # -------------------------
 # Gemini client setup
@@ -208,6 +208,49 @@ async def correlate_logs(logs: List[dict]) -> Optional[dict]:
     logger.info("Metra Classifier: correlate_logs called")
     normalized = await logs_normalization(logs)
     return await correlate_with_gemini(normalized)
+
+async def generate_agent_pr(risk_result: dict) -> Optional[dict]:
+    """
+    Generate a realistic Agent PR based on a classification result.
+    """
+    if not client:
+        return None
+
+    logger.info("Metra Classifier: Generating Agent PR")
+    try:
+        context = {
+            "severity": risk_result.get("severity"),
+            "summary": risk_result.get("summary"),
+            "mitigations": risk_result.get("mitigations", []),
+            "mitre": risk_result.get("mitre_attack", [])
+        }
+        
+        prompt = (
+            PR_GENERATION_PROMPT +
+            "\n" + PR_GENERATION_SCHEMA +
+            f"\nCONTEXT:\n{json.dumps(context)}"
+        )
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=prompt
+        )
+
+        if not response or not response.text:
+            return None
+
+        raw_output = response.text
+        cleaned_output = clean_llm_json(raw_output)
+        parsed_json = json.loads(cleaned_output)
+        
+        # Ensure type is set
+        parsed_json["type"] = "agent_pr"
+        
+        return parsed_json
+
+    except Exception as e:
+        logger.error(f"Metra Classifier: Exception during PR generation: {e}")
+        return None
 
 # -------------------------
 # Workflow / CLI Runner
