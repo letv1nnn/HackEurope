@@ -1,23 +1,31 @@
-import logging
-import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from backend.logger import setup_logging
+from backend.config import settings
+from backend.constants import API_TITLE, API_DESCRIPTION, API_VERSION
 from backend.api.router import api_router
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__, level=settings.LOG_LEVEL, log_file=settings.LOG_FILE)
+
+# Validate configuration on startup
+if not settings.validate():
+    logger.warning("Configuration validation found issues. Some features may not work.")
+
+# Log startup information
+settings.log_config()
 
 app = FastAPI(
-    title="Pen Test Agent Backend",
-    description="Modular backend for Honeypot monitoring, threat classification, and AI remediation.",
-    version="1.0.0"
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version=API_VERSION
 )
 
-# Enable CORS for frontend development
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,4 +48,10 @@ async def root():
     }
 
 if __name__ == "__main__":
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    import uvicorn
+    uvicorn.run(
+        "backend.main:app",
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=settings.API_DEBUG
+    )
