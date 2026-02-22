@@ -1,11 +1,8 @@
 import json
 import subprocess
+import os
 
-# needs gh CLI (must be installed and authenticated)
-# example usage create_github_issue("PawelPopkiewicz", "HackEurope", "exampleIssue", "make some example changes!"))
 def create_github_issue(
-    owner: str,
-    repo: str,
     title: str,
     body: str,
     assignees: list[str] | None = None,
@@ -14,6 +11,12 @@ def create_github_issue(
     custom_agent: str = "",
     model: str = "",
 ):
+    owner = os.getenv("OWNER")
+    repo = os.getenv("REPO")
+
+    if not repo or not owner:
+        raise ValueError("OWNER and REPO environment variables must be set")
+    
     payload = {
         "title": title,
         "body": body,

@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from backend.api.bus import dashboard_bus
 
 from backend.agents.mitre_classifier.main import classify_logs, correlate_logs
+from scripts.agent import create_github_issue
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -42,12 +43,12 @@ async def send_honeypot_json(data: Union[dict, list] = Body(...)):
         try:
             # results is now a List[dict]
             results = await classify_logs(log_data)
-            print(f"Classification results: {results}")
             if results:
                 for res in results:
                     res["timestamp"] = _now()
                     await dashboard_bus.emit(res)
                 logger.info(f"Emitted {len(results)} individual classifications.")
+                create_github_issue("MITRE Classification Results", f"{results}")
             else:
                 logger.warning("Classification results was empty or None.")
 
