@@ -22,14 +22,14 @@ export default function FixerDashboard({
     <div className="w-full h-full flex flex-col overflow-hidden">
       <div className="px-8 py-6 border-b border-zinc-900 flex-shrink-0">
         <h2 className="text-2xl font-bold text-white mb-1 tracking-tight">Fixer Agent</h2>
-        <p className="text-zinc-400 text-sm">Automated remediation and security patching lifecycle</p>
+        <p className="text-zinc-400 text-sm">Automated mitigations and security patching lifecycle</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 flex-grow p-6 h-full overflow-auto animate-in fade-in duration-1000 slide-in-from-bottom-2">
         
         {/* COLUMN 1: FIXER GRAPH */}
         <div className="xl:col-span-2 flex flex-col gap-6 h-full min-h-[400px]">
-          <Panel title="Remediation Workflow" icon={Database} color="bg-blue-600" glowColor="bg-blue-500">
+          <Panel title="Mitigation Workflow" icon={Database} color="bg-blue-600" glowColor="bg-blue-500">
             <div className="h-full w-full bg-zinc-950/50 rounded-lg overflow-hidden border border-zinc-900">
               <ReactFlow
                 nodes={nodes}
@@ -43,7 +43,7 @@ export default function FixerDashboard({
           </Panel>
         </div>
 
-        {/* COLUMN 2: MITRE & REMEDIATION (Stacked) */}
+        {/* COLUMN 2: MITRE & MITIGATIONS (Stacked) */}
         <div className="flex flex-col gap-6 h-full">
           <div className="h-1/3 min-h-[200px]">
             <Panel title="MITRE ATT&CK Tracking" icon={Layers} color="bg-blue-400" glowColor="bg-blue-300">
@@ -58,7 +58,7 @@ export default function FixerDashboard({
           </div>
           
           <div className="h-1/3 min-h-[200px]">
-            <Panel title="Remediation Mitigations" icon={Search} color="bg-emerald-400" glowColor="bg-emerald-300">
+            <Panel title="Mitigations" icon={Search} color="bg-emerald-400" glowColor="bg-emerald-300">
               {!latestRisk?.mitigations ? (
                 <div className="flex flex-col items-center justify-center h-full text-zinc-600 uppercase font-bold text-[9px] text-center px-8">
                   Actionable mitigations will appear here

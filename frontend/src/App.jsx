@@ -129,10 +129,7 @@ export default function App() {
       <aside className="w-72 bg-zinc-950 border-r border-zinc-900 flex flex-col shadow-2xl z-10 flex-shrink-0">
         <div className="p-8">
           <div className="flex items-center gap-3 group">
-            <div className="p-2 bg-blue-600 rounded-lg group-hover:scale-110 transition-transform duration-300">
-              <Terminal className="text-white" size={20} />
-            </div>
-            <h1 className="text-xl font-black text-white tracking-tighter italic">ANTIGRAVITY</h1>
+            <img src="/RedTrace-removebg-preview.png" alt="Logo" className="w-30 h-30 object-contain" />
           </div>
         </div>
 

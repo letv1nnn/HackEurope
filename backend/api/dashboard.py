@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request, Body
 from fastapi.responses import StreamingResponse
 from backend.api.bus import dashboard_bus
 
-from backend.agents.mitre_classifier.main import classify_logs, correlate_logs
+from backend.agents.mitre_classifier.main import classify_logs, correlate_logs, generate_agent_pr
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -60,8 +60,41 @@ async def send_honeypot_json(data: Union[dict, list] = Body(...)):
                 await dashboard_bus.emit(correlation)
                 logger.info("Attack correlation emitted to dashboard bus.")
 
+            # 3. Finalize & Trigger Agent PR
+            # Find the most severe result to generate a PR for
+            high_risk_results = [r for r in (results or []) if str(r.get("severity", "")).upper() in ["CRITICAL", "HIGH"]]
+            if high_risk_results:
+                # Use the first high risk result to generate a PR
+                target_result = high_risk_results[0]
+                pr_event = await generate_agent_pr(target_result)
+                if pr_event:
+                    pr_event["id"] = 100 + len(log_data)
+                    pr_event["timestamp"] = _now()
+                    if logs and isinstance(logs, list) and len(logs) > 0:
+                        pr_event["src_ip"] = logs[0].get("src_ip")
+                    
+                    await dashboard_bus.emit(pr_event)
+                    logger.info(f"AI-generated Agent PR emitted: {pr_event.get('title')}")
+                else:
+                    logger.warning("Failed to generate AI Agent PR.")
+
+            # Signal completion
+            await dashboard_bus.emit({
+                "type": "pipeline_finished",
+                "timestamp": _now(),
+                "status": "success",
+                "items_processed": len(log_data)
+            })
+            logger.info("Pipeline finished event emitted.")
+
         except Exception as e:
             logger.error(f"Classification background task failed: {e}", exc_info=True)
+            await dashboard_bus.emit({
+                "type": "pipeline_finished",
+                "timestamp": _now(),
+                "status": "failed",
+                "error": str(e)
+            })
 
     # Fire and forget
     asyncio.create_task(run_and_emit_classification(data))
