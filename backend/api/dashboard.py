@@ -66,7 +66,8 @@ async def send_honeypot_json(data: Union[Dict[str, Any], List[Dict[str, Any]]] =
                     res["timestamp"] = _now()
                     await dashboard_bus.emit(res)
                 logger.info(f"Emitted {len(results)} individual classifications.")
-                create_github_issue("MITRE Classification Results", f"{results}")
+                results_with_context = " In the following data, the MITRE classifier identified the following techniques and provided fix suggestions for each log entry: " + json.dumps(results, indent=2) + " Please review the repository and suggest changes that would make it harder for the types of threats mentioned to be executed in the future - if they are indeed real - based on the classification results and suggested fixes for each log entry."
+                create_github_issue("MITRE Classification Results", f"{results_with_context}")
             else:
                 logger.warning("Classification results was empty or None.")
 

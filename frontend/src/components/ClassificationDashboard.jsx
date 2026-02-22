@@ -8,8 +8,12 @@ import {
   Radio,
   Search,
   Database,
-  Cpu
+  Cpu,
+  AlertTriangle,
+  TrendingUp
 } from 'lucide-react';
+import { useSSE } from '../hooks/useSSE';
+import { formatTimestamp, getSeverityColor, truncateText } from '../utils/formatters';
 
 const Panel = ({ title, icon: Icon, children, color, glowColor }) => (
   <div className={`bg-zinc-950 border border-zinc-900 rounded-xl flex flex-col h-full shadow-lg overflow-hidden group/panel`}>
@@ -50,22 +54,22 @@ const RiskItem = ({ data }) => (
       <div className="relative w-10 h-10 flex-shrink-0">
         <div className={`absolute inset-0 rounded-full border-2 border-zinc-800`} />
         <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white">
-          {data?.score || 50}
+          {data?.confidence ? Math.round(data.confidence * 100) : data?.score || 50}
         </div>
       </div>
       <div className="flex-grow min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-black uppercase" style={{ color: data?.colour || '#f59e0b' }}>
-            {data?.severity || 'MEDIUM'}
+          <span className={`text-[10px] font-bold px-2 py-1 rounded ${getSeverityColor(data?.severity)}`}>
+            {data?.severity?.toUpperCase() || 'MEDIUM'}
           </span>
-          <span className="text-[9px] text-zinc-600 truncate">{data?.timestamp}</span>
+          <span className="text-[9px] text-zinc-600 truncate">{formatTimestamp(data?.timestamp)}</span>
         </div>
-        <h4 className="text-xs font-bold text-white truncate uppercase">{data?.eventid || 'THREAT-ANALYSIS'}</h4>
+        <h4 className="text-xs font-bold text-white truncate uppercase">{data?.technique_name || data?.eventid || 'THREAT-ANALYSIS'}</h4>
       </div>
     </div>
     {data?.summary && (
       <div className="text-[10px] text-zinc-400 leading-relaxed border-l-2 border-zinc-800 pl-3 py-1 italic bg-black/20 rounded-r">
-        {data.summary}
+        {truncateText(data.summary, 150)}
       </div>
     )}
   </div>
@@ -100,37 +104,33 @@ export default function ClassificationDashboard() {
   const [liveLogs, setLiveLogs] = useState([]);
   const [riskScores, setRiskScores] = useState([]);
   const [attackChains, setAttackChains] = useState([]);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+
+  // Use custom SSE hook for dashboard stream
+  const dashboardSSE = useSSE('/dashboard/stream', (data) => {
+    const type = data.type || (data.eventid ? 'cowrie_log' : null);
+
+    if (type === 'cowrie_log') {
+      setLiveLogs(prev => [data, ...prev].slice(0, 20));
+    } else if (type === 'mitre_classification' || type === 'risk_score') {
+      setRiskScores(prev => [data, ...prev].slice(0, 15));
+    } else if (type === 'attack_chain') {
+      setAttackChains(prev => [data, ...prev].slice(0, 5));
+    }
+  });
 
   useEffect(() => {
-    const source = new EventSource('http://localhost:8000/api/v1/dashboard/stream');
-    
-    source.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const type = data.type || (data.eventid ? 'live_log' : null);
-
-        if (type === 'live_log') {
-          setLiveLogs(prev => [data, ...prev].slice(0, 20));
-        } else if (type === 'risk_score') {
-          setRiskScores(prev => [data, ...prev].slice(0, 15));
-        } else if (type === 'attack_chain') {
-          setAttackChains(prev => [data, ...prev].slice(0, 5));
-        }
-      } catch (err) {
-        console.error("Error parsing dashboard push:", err);
-      }
-    };
-
-    source.onerror = (err) => {
-      console.error("Dashboard stream error:", err);
-      source.close();
-    };
-
-    return () => source.close();
-  }, []);
+    setConnectionStatus(dashboardSSE.isConnected ? 'connected' : 'disconnected');
+  }, [dashboardSSE.isConnected]);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 grid-rows-2 gap-6 h-full p-6 animate-in fade-in duration-1000 slide-in-from-bottom-2">
+      {/* Connection Status Indicator */}
+      <div className="absolute top-2 right-2 flex items-center gap-2 px-3 py-1 bg-zinc-900 rounded-full text-xs">
+        <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
+        <span className="text-zinc-400">{connectionStatus}</span>
+      </div>
+
       <Panel title="Real-time Feed" icon={Cpu} color="bg-blue-600" glowColor="bg-blue-500">
         {liveLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-zinc-500 uppercase font-black text-[10px]">

@@ -80,12 +80,45 @@ async def logs_normalization(logs: Any) -> Any:
     return logs
 
 def clean_llm_json(text: str) -> str:
-    """Remove code block wrappers and whitespace from LLM output."""
+    """Extract valid JSON from LLM output, handling code blocks and extra text."""
     text = text.strip()
+    
+    # Remove code block wrappers
     text = re.sub(r"^```json\s*", "", text)
     text = re.sub(r"^```\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
-    return text.strip()
+    text = text.strip()
+    
+    # Extract JSON object/array - find the first { or [ and match the closing bracket
+    json_start = -1
+    json_char = None
+    for i, char in enumerate(text):
+        if char in ('{', '['):
+            json_start = i
+            json_char = char
+            break
+    
+    if json_start == -1:
+        return text  # No JSON found, return as-is
+    
+    # Find matching closing bracket
+    closing_char = '}' if json_char == '{' else ']'
+    bracket_count = 0
+    json_end = -1
+    
+    for i in range(json_start, len(text)):
+        if text[i] == json_char:
+            bracket_count += 1
+        elif text[i] == closing_char:
+            bracket_count -= 1
+            if bracket_count == 0:
+                json_end = i + 1
+                break
+    
+    if json_end == -1:
+        return text  # Couldn't find matching bracket, return as-is
+    
+    return text[json_start:json_end]
 
 # -------------------------
 # LLM Classification
@@ -120,7 +153,14 @@ async def classify_with_gemini(logs: List[dict], mitre_data: Any) -> Optional[Li
 
         raw_output = response.text
         cleaned_output = clean_llm_json(raw_output)
-        parsed_json = json.loads(cleaned_output)
+        
+        try:
+            parsed_json = json.loads(cleaned_output)
+        except json.JSONDecodeError as e:
+            logger.error(f"Metra Classifier: Failed to parse JSON from LLM output: {e}")
+            logger.debug(f"Metra Classifier: Raw output: {raw_output[:500]}...")
+            logger.debug(f"Metra Classifier: Cleaned output: {cleaned_output[:500]}...")
+            return None
 
         # Handle batch results or single result
         results = []
